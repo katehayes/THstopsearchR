@@ -1,5 +1,39 @@
+
+# install.packages("sf")
+library(sf)
+# install.packages("lubridate")
+library(lubridate)
+library(tidyverse)
+
+
 ##------##------##------##------##------##------##------##------##------##------##------##------##------##------##------
 ##-------------###CLEANING STOP AND SEARCH SPATIAL DATA###--------------------------------------------------------------------
+##------##------##------##------##------##------##------##------##------##------##------##------##------##------##------
+ss_clean <- function(raw_list) {
+  clean_list <- list()
+  for (i in 1:length(raw_list)) {
+    ss <- raw_list[[i]]
+ 
+    sssf <- st_as_sf(ss, coords = c("Longitude", "Latitude"), crs = 3857)
+    sssf$LA <- lonlat_to_LA(ss_sf = sssf)
+    
+    ss_th <- sssf %>%
+      filter(LA == "Tower Hamlets")
+    ss_th$lsoa <- lonlat_to_lsoa(ss_sf = ss_th)
+    ss_th$ward <- lonlat_to_ward(ss_sf = ss_th)
+    
+    clean_list[[i]] <- ss_th
+  }
+  return(clean_list)
+}
+
+
+
+
+
+
+##------##------##------##------##------##------##------##------##------##------##------##------##------##------##------
+##-------------###OLD OLD OLD###--------------------------------------------------------------------
 ##------##------##------##------##------##------##------##------##------##------##------##------##------##------##------
 lonlat_to_lsoa <- function(ss_sf,
                            LSOA_shape = lsoa_shape,
@@ -10,6 +44,18 @@ lonlat_to_lsoa <- function(ss_sf,
   ii <- as.integer(st_intersects(ss_trans, lsoa_trans))
   lsoa_names[ii]
 }
+
+
+lonlat_to_lsoashape <- function(ss_sf,
+                                LSOA_shape = lsoa_shape,
+                                shape_col = "geometry") {
+  lsoa_trans <- st_transform(lsoa_shape, crs = 3857)
+  ss_trans <- st_transform(ss_sf, crs = 3857)
+  shape <- lsoa_trans[[shape_col]]
+  ii <- as.integer(st_intersects(ss_trans, lsoa_trans))
+  shape[ii]
+}
+
 lonlat_to_ward <- function(ss_sf,
                            ward_shape = w_shape,
                            name_col = "WD22NM") {
@@ -19,6 +65,17 @@ lonlat_to_ward <- function(ss_sf,
   ii <- as.integer(st_intersects(ss_trans, ward_trans))
   ward_names[ii]
 }
+
+lonlat_to_wshape <- function(ss_sf,
+                           ward_shape = w_shape,
+                           shape_col = "geometry") {
+  ward_trans <- st_transform(ward_shape, crs = 3857)
+  ss_trans <- st_transform(ss_sf, crs = 3857)
+  shape <- ward_trans[[shape_col]]
+  ii <- as.integer(st_intersects(ss_trans, ward_trans))
+  shape[ii]
+}
+
 lonlat_to_LA <- function(ss_sf,
                          ward_shape = w_shape,
                          name_col = "LAD22NM") {
