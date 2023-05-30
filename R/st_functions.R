@@ -4,6 +4,7 @@ library(sf)
 # install.packages("lubridate")
 library(lubridate)
 library(tidyverse)
+library(readxl)
 
 
 ##------##------##------##------##------##------##------##------##------##------##------##------##------##------##------
@@ -37,7 +38,7 @@ ss_clean <- function(raw_list) {
 ##------##------##------##------##------##------##------##------##------##------##------##------##------##------##------
 lonlat_to_lsoa <- function(ss_sf,
                            LSOA_shape = lsoa_shape,
-                           name_col = "LSOA21NM") {
+                           name_col = "LSOA11NM") {
   lsoa_trans <- st_transform(lsoa_shape, crs = 3857)
   ss_trans <- st_transform(ss_sf, crs = 3857)
   lsoa_names <- lsoa_trans[[name_col]]
@@ -58,7 +59,7 @@ lonlat_to_lsoashape <- function(ss_sf,
 
 lonlat_to_ward <- function(ss_sf,
                            ward_shape = w_shape,
-                           name_col = "WD22NM") {
+                           name_col = "WD11NM") {
   ward_trans <- st_transform(ward_shape, crs = 3857)
   ss_trans <- st_transform(ss_sf, crs = 3857)
   ward_names <- ward_trans[[name_col]]
@@ -66,13 +67,24 @@ lonlat_to_ward <- function(ss_sf,
   ward_names[ii]
 }
 
+# lonlat_to_wshape <- function(ss_sf,
+#                            ward_shape = w_shape,
+#                            shape_col = "geometry") {
+#   ward_trans <- st_transform(ward_shape, crs = 3857)
+#   ss_trans <- st_transform(ss_sf, crs = 3857)
+#   shape <- ward_trans[[shape_col]]
+#   ii <- as.integer(st_intersects(ss_trans, ward_trans))
+#   shape[ii]
+# }
+
+# hahaahhahha no, not even nearly
 lonlat_to_wshape <- function(ss_sf,
                            ward_shape = w_shape,
                            shape_col = "geometry") {
   ward_trans <- st_transform(ward_shape, crs = 3857)
   ss_trans <- st_transform(ss_sf, crs = 3857)
   shape <- ward_trans[[shape_col]]
-  ii <- as.integer(st_intersects(ss_trans, ward_trans))
+  ii <- as.integer(grepl(ward_trans, ss_trans))
   shape[ii]
 }
 
