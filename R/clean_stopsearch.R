@@ -34,7 +34,7 @@ ss_geom <- lapply(files_to_read, read.csv) %>%
   filter(!is.na(Latitude), 
          !is.na(Longitude)) %>% 
   distinct(Latitude, Longitude) %>% 
-  st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326)
+  st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326) # 4326
 
 
 # ss_geom$ward <- lonlat_to_ward(ss_sf = ss_geom)
@@ -59,59 +59,58 @@ ss_raw_03_22_03_23 <- lapply(files_to_read, read.csv) %>%
  # have not yet managed to add ward shape - but thats fine
 
 
+
 ss_th <- ss_raw_03_22_03_23 %>% 
   filter(LA == "Tower Hamlets") %>% 
   mutate(long_date = ymd_hms(Date),
          short_date = as.Date(Date)) %>% 
   mutate(time = hour(long_date),
          day = wday(long_date, label = TRUE),
-         month = month(long_date, label = TRUE))
+         month = month(long_date, label = TRUE)) %>% 
+  select(-c(Part.of.a.policing.operation, Policing.operation, 
+            Outcome.linked.to.object.of.search, Removal.of.more.than.just.outer.clothing)) %>%  # these are all blank/non-informative
+  rename(outcome = Outcome,
+         powers = Legislation,
+         search_type = Type,
+         date = Date,
+         gender = Gender,
+         age = Age.range,
+         ethnicity_self = Self.defined.ethnicity,
+         ethnicity_officer = Officer.defined.ethnicity,
+         reason = Object.of.search)
 
-ss_th %>% 
+check <- ss_th %>% 
+  st_transform(crs = 3857)
+
+
+st_geometry(ss_th) <- "lsoa_shape"
+  
+  
+th_lsoa_list <- lsoa2LA %>% 
+  filter(LAD21NM == "Tower Hamlets") %>% 
+  select(LSOA11NM, WD21NM) %>% 
+  rename(lsoa = LSOA11NM,
+         ward = WD21NM)
+
+lsoa_list <- ss_th %>% 
   st_drop_geometry() %>% 
-  filter(ward == "Mile End") %>% 
-  mutate(count = 1) %>% 
-  group_by(month, day) %>% 
-  summarise(count = sum(count)) %>% 
-  ggplot() +
-  geom_bar(aes(x = day, y = count), 
-           stat = "identity", position = "dodge2") +
-  facet_wrap(~month)
+  distinct(lsoa)
+
+missing_lsoa <- th_lsoa_list %>% 
+  filter(!(lsoa %in% lsoa_list$lsoa)) %>% 
+  select(lsoa)
+
+missing_lsoa_shape <- th_lsoa_list %>% 
+  filter(!(lsoa %in% lsoa_list$lsoa)) %>% 
+  left_join(lsoa_shape %>% 
+              select(LSOA11NM) %>% 
+              rename(lsoa = LSOA11NM)) %>% 
+  rename(lsoa_shape = geometry) %>% 
+  mutate(count = 0) %>% 
+  st_as_sf() %>% 
+  st_transform(crs = 4326)
+  
 
 
-  # check <- w_shape %>% 
-#   select(WD22NM, geometry) %>% 
-#   rename(ward = WD22NM,
-#          ward_shape = geometry)
-
-# check <- w_shape %>% 
-#   filter(LAD22NM == "Tower Hamlets") %>% 
-#   select(WD22NM)
-# 
-# check2 <- lsoa2LA %>% 
-#   filter(LAD21NM == "Tower Hamlets") %>% 
-#   select(WD21NM) %>% 
-#   distinct(WD21NM)
-
-# 
-
-
-# OK we notice an inconsistency - the ward shape and LSOA shape seem to conflict sometimes
-# the ward says whitechapel and the lsoa says hackney or city of london
- ss_th <- ss_raw_03_22_03_23 %>% 
-  filter(LA == "Tower Hamlets")
-
- ss_th2 <- ss_raw_03_22_03_23 %>% 
-   filter(grepl("Tower Hamlets", lsoa))
- 
- # check <- ss_raw_03_22_03_23 %>% 
- #   st_drop_geometry() %>% 
- #   filter(LA == "Tower Hamlets") %>% 
- #   distinct(ward, ward2)
- 
- check <- ss_raw_03_22_03_23 %>%
-   st_drop_geometry() %>%
-   filter(LA == "Tower Hamlets") %>%
-   distinct(lsoa)
  
 

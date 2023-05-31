@@ -1,3 +1,5 @@
+install.packages("ggmap")
+library(ggmap)
 
 # install.packages("sf")
 library(sf)
@@ -5,6 +7,7 @@ library(sf)
 library(lubridate)
 library(tidyverse)
 library(readxl)
+library(viridis)
 
 
 ##------##------##------##------##------##------##------##------##------##------##------##------##------##------##------
@@ -36,9 +39,21 @@ ss_clean <- function(raw_list) {
 ##------##------##------##------##------##------##------##------##------##------##------##------##------##------##------
 ##-------------###OLD OLD OLD###--------------------------------------------------------------------
 ##------##------##------##------##------##------##------##------##------##------##------##------##------##------##------
+# lonlat_to_lsoa <- function(ss_sf,
+#                            LSOA_shape = lsoa_shape,
+#                            name_col = "LSOA11NM") {
+#   lsoa_trans <- st_transform(lsoa_shape, crs = 4326)
+#   # ss_trans <- st_transform(ss_sf, crs = 3857)
+#   ss_trans <- ss_sf
+#   lsoa_names <- lsoa_trans[[name_col]]
+#   ii <- as.integer(st_intersects(ss_trans, lsoa_trans))
+#   lsoa_names[ii]
+# }
+
+
 lonlat_to_lsoa <- function(ss_sf,
-                           LSOA_shape = lsoa_shape,
-                           name_col = "LSOA11NM") {
+LSOA_shape = lsoa_shape,
+name_col = "LSOA11NM") {
   lsoa_trans <- st_transform(lsoa_shape, crs = 3857)
   ss_trans <- st_transform(ss_sf, crs = 3857)
   lsoa_names <- lsoa_trans[[name_col]]
