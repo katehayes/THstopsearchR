@@ -59,9 +59,7 @@ ss_raw_03_22_03_23 <- lapply(files_to_read, read.csv) %>%
  # have not yet managed to add ward shape - but thats fine
 
 
-
-ss_th <- ss_raw_03_22_03_23 %>% 
-  filter(LA == "Tower Hamlets") %>% 
+ss_london <- ss_raw_03_22_03_23 %>% 
   mutate(long_date = ymd_hms(Date),
          short_date = as.Date(Date)) %>% 
   mutate(time = hour(long_date),
@@ -79,29 +77,101 @@ ss_th <- ss_raw_03_22_03_23 %>%
          ethnicity_officer = Officer.defined.ethnicity,
          reason = Object.of.search)
 
-check <- ss_th %>% 
-  st_transform(crs = 3857)
+ss_th <- ss_london %>% 
+  filter(LA == "Tower Hamlets") 
 
 
-st_geometry(ss_th) <- "lsoa_shape"
+# check <- ss_th %>% 
+#   st_transform(crs = 3857)
+# st_geometry(ss_th) <- "lsoa_shape"
   
-  
+
+ss_th_car <- ss_th %>% 
+  filter(search_type %in% c("Person and Vehicle search", "Vehicle search"))
+
+ss_th_person <- ss_th %>% 
+  filter(search_type == "Person search")
+
+
+
+
+
 th_lsoa_list <- lsoa2LA %>% 
   filter(LAD21NM == "Tower Hamlets") %>% 
   select(LSOA11NM, WD21NM) %>% 
   rename(lsoa = LSOA11NM,
          ward = WD21NM)
 
-lsoa_list <- ss_th %>% 
+
+
+
+ss_lsoa_list <- ss_th %>% 
   st_drop_geometry() %>% 
   distinct(lsoa)
 
-missing_lsoa <- th_lsoa_list %>% 
-  filter(!(lsoa %in% lsoa_list$lsoa)) %>% 
-  select(lsoa)
+sec60_lsoa_list <- ss_th %>% 
+  st_drop_geometry() %>% 
+  filter(powers == "Criminal Justice and Public Order Act 1994 (section 60)") %>% 
+  distinct(lsoa)
+
+PACE_lsoa_list <- ss_th %>% 
+  st_drop_geometry() %>% 
+  filter(powers == "Police and Criminal Evidence Act 1984 (section 1)") %>% 
+  distinct(lsoa)
+
+sec23_lsoa_list <- ss_th %>% 
+  st_drop_geometry() %>% 
+  filter(powers == "Misuse of Drugs Act 1971 (section 23)") %>% 
+  distinct(lsoa)
+
+sec47_lsoa_list <- ss_th %>% 
+  st_drop_geometry() %>% 
+  filter(powers == "Firearms Act 1968 (section 47)") %>% 
+  distinct(lsoa)
+
 
 missing_lsoa_shape <- th_lsoa_list %>% 
-  filter(!(lsoa %in% lsoa_list$lsoa)) %>% 
+  filter(!(lsoa %in% ss_lsoa_list$lsoa)) %>% 
+  left_join(lsoa_shape %>% 
+              select(LSOA11NM) %>% 
+              rename(lsoa = LSOA11NM)) %>% 
+  rename(lsoa_shape = geometry) %>% 
+  mutate(count = 0) %>% 
+  st_as_sf() %>% 
+  st_transform(crs = 4326)
+
+missing_sec60_lsoa_shape <- th_lsoa_list %>% 
+  filter(!(lsoa %in% sec60_lsoa_list$lsoa)) %>% 
+  left_join(lsoa_shape %>% 
+              select(LSOA11NM) %>% 
+              rename(lsoa = LSOA11NM)) %>% 
+  rename(lsoa_shape = geometry) %>% 
+  mutate(count = 0) %>% 
+  st_as_sf() %>% 
+  st_transform(crs = 4326)
+
+missing_PACE_lsoa_shape <- th_lsoa_list %>% 
+  filter(!(lsoa %in% PACE_lsoa_list$lsoa)) %>% 
+  left_join(lsoa_shape %>% 
+              select(LSOA11NM) %>% 
+              rename(lsoa = LSOA11NM)) %>% 
+  rename(lsoa_shape = geometry) %>% 
+  mutate(count = 0) %>% 
+  st_as_sf() %>% 
+  st_transform(crs = 4326)
+
+missing_sec23_lsoa_shape <- th_lsoa_list %>% 
+  filter(!(lsoa %in% sec23_lsoa_list$lsoa)) %>% 
+  left_join(lsoa_shape %>% 
+              select(LSOA11NM) %>% 
+              rename(lsoa = LSOA11NM)) %>% 
+  rename(lsoa_shape = geometry) %>% 
+  mutate(count = 0) %>% 
+  st_as_sf() %>% 
+  st_transform(crs = 4326)
+
+missing_sec47_lsoa_shape <- th_lsoa_list %>% 
+  filter(!(lsoa %in% sec47_lsoa_list$lsoa)) %>% 
   left_join(lsoa_shape %>% 
               select(LSOA11NM) %>% 
               rename(lsoa = LSOA11NM)) %>% 
@@ -111,6 +181,29 @@ missing_lsoa_shape <- th_lsoa_list %>%
   st_transform(crs = 4326)
   
 
+# OK I THINK THE ISSUE IS PROBABLY - THERE ARE MUTLIPLE WARDS CALLED THE SAME NAME
+# just if you want to make a big map, which isnt the priority actually
+london_la_list <- ss_london %>% 
+  st_drop_geometry() %>% 
+  distinct(LA) 
 
- 
+gone_wrong_list <- c("Central Bedfordshire",
+                     "Brighton and Hove",
+                     "Buckinghamshire",
+                     "North East Derbyshire",
+                     "Oxford",
+                     "Nottingham")
 
+
+#   
+# q <- opq(bbox = 'greater london uk') %>%
+#   add_osm_feature(key = 'highway') %>%
+#   osmdata_sf()
+
+
+q <- opq(bbox = 'hackney') %>%
+  add_osm_feature(key = 'highway') %>%
+  add_osm_feature(key = 'name') %>%
+  osmdata_xml(filename = 'roads.osm')
+
+road_lines <- sf::st_read('roads.osm', layer = 'polygon')

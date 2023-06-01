@@ -1,5 +1,7 @@
-install.packages("ggmap")
+# install.packages("ggmap")
 library(ggmap)
+# install.packages("osmdata")
+library(osmdata)
 
 # install.packages("sf")
 library(sf)
@@ -13,23 +15,42 @@ library(viridis)
 ##------##------##------##------##------##------##------##------##------##------##------##------##------##------##------
 ##-------------###CLEANING STOP AND SEARCH SPATIAL DATA###--------------------------------------------------------------------
 ##------##------##------##------##------##------##------##------##------##------##------##------##------##------##------
-ss_clean <- function(raw_list) {
-  clean_list <- list()
-  for (i in 1:length(raw_list)) {
-    ss <- raw_list[[i]]
- 
-    sssf <- st_as_sf(ss, coords = c("Longitude", "Latitude"), crs = 3857)
-    sssf$LA <- lonlat_to_LA(ss_sf = sssf)
-    
-    ss_th <- sssf %>%
-      filter(LA == "Tower Hamlets")
-    ss_th$lsoa <- lonlat_to_lsoa(ss_sf = ss_th)
-    ss_th$ward <- lonlat_to_ward(ss_sf = ss_th)
-    
-    clean_list[[i]] <- ss_th
-  }
-  return(clean_list)
+
+# missing lsoas to black
+
+add_missing_lsoa <- function(ss_data, full_lsoa_list, full_lsoa_shapes) {
+  
+  present_lsoa <- ss_data %>% 
+    st_drop_geometry() %>% 
+    distinct(lsoa)
+  
+  missing_shapes <- full_lsoa_list %>% 
+    filter(!(lsoa %in% present_lsoa$lsoa)) %>% 
+    left_join(full_lsoa_shapes %>% 
+                select(LSOA11NM) %>% 
+                rename(lsoa = LSOA11NM)) %>% 
+    rename(lsoa_shape = geometry) %>% 
+    mutate(count = 0) %>% 
+    st_as_sf() %>% 
+    st_transform(crs = 4326)
+  
+  return(missing_shapes)
+  
 }
+
+
+
+
+
+missing_lsoa_shape <- th_lsoa_list %>% 
+  filter(!(lsoa %in% ss_lsoa_list$lsoa)) %>% 
+  left_join(lsoa_shape %>% 
+              select(LSOA11NM) %>% 
+              rename(lsoa = LSOA11NM)) %>% 
+  rename(lsoa_shape = geometry) %>% 
+  mutate(count = 0) %>% 
+  st_as_sf() %>% 
+  st_transform(crs = 4326)
 
 
 
