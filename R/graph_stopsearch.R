@@ -209,7 +209,38 @@ ss_map_month <- ss_th  %>%
 
 ss_map_month
 
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+# # # # # # #Looking at use of different type of police powers# # # # # # # # # # # 
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+ss_th_powers_pc <- ss_th %>% 
+  st_drop_geometry() %>% 
+  filter(powers != "") %>% 
+  group_by(lsoa, lsoa_shape, powers) %>% 
+  mutate(count = 1) %>% 
+  summarise(count = sum(count)) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = powers,
+              values_from = count,
+              values_fill = 0) %>% 
+  mutate(tot = `Police and Criminal Evidence Act 1984 (section 1)` + `Misuse of Drugs Act 1971 (section 23)` +
+           `Criminal Justice and Public Order Act 1994 (section 60)` + `Firearms Act 1968 (section 47)`,
+         `Police and Criminal Evidence Act 1984 (section 1)` = `Police and Criminal Evidence Act 1984 (section 1)`/tot,
+         `Misuse of Drugs Act 1971 (section 23)` = `Misuse of Drugs Act 1971 (section 23)`/tot,
+         `Criminal Justice and Public Order Act 1994 (section 60)` = `Criminal Justice and Public Order Act 1994 (section 60)`/tot,
+         `Firearms Act 1968 (section 47)` = `Firearms Act 1968 (section 47)`/tot) %>% 
+  select(-tot) %>% 
+  pivot_longer(-c(lsoa, lsoa_shape),
+             names_to = "powers",
+             values_to = "pc") %>% 
+  st_as_sf() %>% 
+  st_transform(crs = 4326) %>% 
+  ggplot(aes(fill = pc)) +
+  geom_sf(colour = "white") +
+  scale_fill_viridis(option = "magma") +
+  facet_wrap(~powers) +
+  geom_sf(data = missing_lsoa_shape, fill = "grey", color = "white")
 
+ss_th_powers_pc
 
 ss_powerspc <- ss_th %>% 
   group_by(lsoa, powers) %>% 
@@ -284,7 +315,6 @@ ss_th_car <- ss_th %>%
   summarise(count = sum(count)) %>% 
   st_as_sf() %>% 
   st_transform(crs = 4326) %>% 
-  bind_rows(missing_lsoa_shape) %>% 
   bind_rows(add_missing_lsoa(ss_data = ss_th %>% 
                                filter(search_type %in% c("Person and Vehicle search", "Vehicle search")),
                              full_lsoa_list = th_lsoa_list, full_lsoa_shapes = lsoa_shape)) %>% 
@@ -292,9 +322,660 @@ ss_th_car <- ss_th %>%
   geom_sf(colour="white") +
   scale_fill_viridis(option = "magma")
 
-
-
 ss_th_car
 
+
+ss_th_car_days <- ss_th %>% 
+  filter(search_type %in% c("Person and Vehicle search", "Vehicle search")) %>% 
+  st_drop_geometry() %>% 
+  distinct(lsoa, lsoa_shape, short_date) %>% 
+  mutate(count = 1) %>% 
+  group_by(lsoa, lsoa_shape) %>% 
+  summarise(count = sum(count)) %>% 
+  st_as_sf() %>% 
+  st_transform(crs = 4326) %>% 
+  bind_rows(add_missing_lsoa(ss_data = ss_th %>% 
+                               filter(search_type %in% c("Person and Vehicle search", "Vehicle search")),
+                             full_lsoa_list = th_lsoa_list, full_lsoa_shapes = lsoa_shape)) %>% 
+  ggplot(aes(fill=count)) +
+  geom_sf(colour="white") +
+  scale_fill_viridis(option = "magma")
+
+ss_th_car_days
+
+
 ss_th_person <- ss_th %>% 
-  filter(search_type == "Person search")
+  filter(search_type == "Person search") %>% 
+  st_drop_geometry() %>% 
+  group_by(lsoa, ward, lsoa_shape) %>% 
+  mutate(count = 1) %>% 
+  summarise(count = sum(count)) %>% 
+  st_as_sf() %>% 
+  st_transform(crs = 4326) %>% 
+  bind_rows(add_missing_lsoa(ss_data = ss_th %>% 
+                               filter(search_type == "Person search"),
+                               full_lsoa_list = th_lsoa_list, full_lsoa_shapes = lsoa_shape)) %>% 
+  ggplot(aes(fill=count)) +
+  geom_sf(colour="white") +
+  scale_fill_viridis(option = "magma")
+
+
+ss_th_person
+
+
+ss_th_person_days <- ss_th %>% 
+  filter(search_type == "Person search") %>% 
+  st_drop_geometry() %>% 
+  distinct(lsoa, lsoa_shape, short_date) %>% 
+  mutate(count = 1) %>% 
+  group_by(lsoa, lsoa_shape) %>% 
+  summarise(count = sum(count)) %>% 
+  st_as_sf() %>% 
+  st_transform(crs = 4326) %>% 
+  bind_rows(add_missing_lsoa(ss_data = ss_th %>% 
+                               filter(search_type == "Person search"),
+                             full_lsoa_list = th_lsoa_list, full_lsoa_shapes = lsoa_shape)) %>% 
+  ggplot(aes(fill=count)) +
+  geom_sf(colour="white") +
+  scale_fill_viridis(option = "magma")
+
+
+ss_th_person_days
+
+
+ss_th_car_pc <- ss_th %>% 
+  st_drop_geometry() %>% 
+  filter(search_type != "") %>% 
+  mutate(search_type = ifelse(search_type == "Person search", "Person", "Car")) %>% 
+  group_by(lsoa, lsoa_shape, search_type) %>% 
+  mutate(count = 1) %>% 
+  summarise(count = sum(count)) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = search_type,
+              values_from = count,
+              values_fill = 0) %>% 
+  mutate(tot = Person + Car,
+         Person = Person/tot,
+         Car = Car/tot) %>% 
+  select(-tot) %>% 
+  pivot_longer(-c(lsoa, lsoa_shape),
+               names_to = "search_type",
+               values_to = "pc") %>% 
+  st_as_sf() %>% 
+  st_transform(crs = 4326) %>% 
+  ggplot(aes(fill = pc)) +
+  geom_sf(colour = "white") +
+  scale_fill_viridis(option = "magma") +
+  facet_wrap(~search_type) +
+  geom_sf(data = missing_lsoa_shape, fill = "grey", color = "white")
+
+ss_th_car_pc
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+# # # # # # #INVESTIGATING AGE GROUP # # # # # # # # # # # # # # # 
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+ss_th_age <- ss_th %>% 
+  st_drop_geometry() %>% 
+  filter(age != "") %>% 
+  group_by(lsoa, ward, lsoa_shape, age) %>% 
+  mutate(count = 1) %>% 
+  summarise(count = sum(count)) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = age,
+              values_from = count,
+              values_fill = 0) %>% 
+  pivot_longer(c(`10-17`, `18-24`, `25-34`, `over 34`),
+               names_to = "age",
+               values_to = "count") %>% 
+  st_as_sf() %>% 
+  st_transform(crs = 4326) %>% 
+  ggplot(aes(fill = count)) +
+  geom_sf(colour = "white") +
+  scale_fill_viridis(option = "magma") +
+  facet_wrap(~age) +
+  geom_sf(data = missing_lsoa_shape, fill = "grey", color = "white")
+
+ss_th_age
+
+
+ss_th_age_pc <- ss_th %>% 
+  st_drop_geometry() %>% 
+  filter(age != "") %>% 
+  group_by(lsoa, ward, lsoa_shape, age) %>% 
+  mutate(count = 1) %>% 
+  summarise(count = sum(count)) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = age,
+              values_from = count,
+              values_fill = 0) %>% 
+  mutate(tot = `under 10` + `10-17` + `18-24` + `25-34` + `over 34`,
+         `under 10` = `under 10`/tot,
+         `10-17` = `10-17`/tot,
+         `18-24` = `18-24`/tot,
+         `25-34` = `25-34`/tot,
+         `over 34` = `over 34`/tot) %>% 
+  select(-tot) %>% 
+  pivot_longer(c(`under 10`, `10-17`, `18-24`, `25-34`, `over 34`),
+               names_to = "age",
+               values_to = "pc") %>% 
+  st_as_sf() %>% 
+  st_transform(crs = 4326) %>% 
+  ggplot(aes(fill = pc)) +
+  geom_sf(colour = "white") +
+  scale_fill_viridis(option = "magma") +
+  facet_wrap(~age) +
+  geom_sf(data = missing_lsoa_shape, fill = "grey", color = "white")
+
+ss_th_age_pc
+
+ss_th_age_missing <- ss_th %>% 
+  st_drop_geometry() %>% 
+  mutate(age_missing = ifelse(age == "", "Missing", "Recorded")) %>% 
+  group_by(lsoa, ward, lsoa_shape, age_missing) %>% 
+  mutate(count = 1) %>% 
+  summarise(count = sum(count)) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = age_missing,
+              values_from = count,
+              values_fill = 0) %>% 
+  mutate(tot = Missing + Recorded,
+         Missing = Missing/tot,
+         Recorded = Recorded/tot) %>% 
+  select(-tot) %>% 
+  pivot_longer(c(Missing, Recorded),
+               names_to = "age_missing",
+               values_to = "pc") %>% 
+  filter(age_missing == "Missing") %>% 
+  st_as_sf() %>% 
+  st_transform(crs = 4326) %>% 
+  ggplot(aes(fill = pc)) +
+  geom_sf(colour = "white") +
+  scale_fill_viridis(option = "magma") +
+  geom_sf(data = missing_lsoa_shape, fill = "grey", color = "white")
+  
+ss_th_age_missing
+  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  # # # # # # #INVESTIGATING missing # # # # # # # # # # # # # # # 
+  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  
+  # look at how missingness of various categories changes over time?
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+# # # # # # #INVESTIGATING reasons # # # # # # # # # # # # # # # 
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+
+check <- ss_th %>% 
+  st_drop_geometry() %>% 
+  distinct(reason)
+
+# Stolen goods
+# Controlled drugs
+# Offensive weapons
+# Evidence of offences under the Act
+# Articles for use in criminal damage
+# Anything to threaten or harm anyone
+# Firearms
+# Fireworks
+
+ss_th_reason_missing <- ss_th %>% 
+  st_drop_geometry() %>% 
+  mutate(reason_missing = ifelse(reason == "", "Missing", "Recorded")) %>% 
+  group_by(lsoa, ward, lsoa_shape, reason_missing) %>% 
+  mutate(count = 1) %>% 
+  summarise(count = sum(count)) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = reason_missing,
+              values_from = count,
+              values_fill = 0) %>% 
+  mutate(tot = Missing + Recorded,
+         Missing = Missing/tot,
+         Recorded = Recorded/tot) %>% 
+  select(-tot) %>% 
+  pivot_longer(c(Missing, Recorded),
+               names_to = "reason_missing",
+               values_to = "pc") %>% 
+  filter(reason_missing == "Missing") %>% 
+  st_as_sf() %>% 
+  st_transform(crs = 4326) %>% 
+  ggplot(aes(fill = pc)) +
+  geom_sf(colour = "white") +
+  scale_fill_viridis(option = "magma") +
+  geom_sf(data = missing_lsoa_shape, fill = "grey", color = "white")
+
+ss_th_reason_missing
+# reason is pretty rarely missing
+
+ss_th_reason_pc_weapon <- ss_th %>% 
+  st_drop_geometry() %>% 
+  filter(reason != "") %>% 
+  group_by(lsoa, ward, lsoa_shape, reason) %>% 
+  mutate(count = 1) %>% 
+  summarise(count = sum(count)) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = reason,
+              values_from = count,
+              values_fill = 0) %>% 
+  mutate(tot = `Stolen goods` + `Controlled drugs` + `Offensive weapons` +
+           `Evidence of offences under the Act` + `Articles for use in criminal damage` + 
+           `Anything to threaten or harm anyone` + `Firearms` + `Fireworks`,
+         `Stolen goods` = `Stolen goods`/tot,
+         `Controlled drugs` = `Controlled drugs`/tot,
+         `Offensive weapons` = `Offensive weapons`/tot,
+         `Evidence of offences under the Act` = `Evidence of offences under the Act`/tot,
+         `Articles for use in criminal damage` = `Articles for use in criminal damage`/tot,
+         `Anything to threaten or harm anyone` = `Anything to threaten or harm anyone`/tot,
+         `Firearms` = `Firearms`/tot,
+         `Fireworks` = `Fireworks`/tot) %>% 
+  select(-tot) %>% 
+  pivot_longer(c(`Stolen goods`, `Controlled drugs`, `Offensive weapons`,
+                   `Evidence of offences under the Act`, `Articles for use in criminal damage`, 
+                   `Anything to threaten or harm anyone`, `Firearms`, `Fireworks`),
+               names_to = "reason",
+               values_to = "pc") %>% 
+  filter(reason %in% c("Anything to threaten or harm anyone", "Firearms",
+                       "Offensive weapons")) %>% 
+  st_as_sf() %>% 
+  st_transform(crs = 4326) %>% 
+  ggplot(aes(fill = pc)) +
+  geom_sf(colour = "white") +
+  scale_fill_viridis(option = "magma") +
+  facet_wrap(~reason) +
+  geom_sf(data = missing_lsoa_shape, fill = "grey", color = "white")
+
+ss_th_reason_pc_weapon
+
+
+ss_th_reason_pc_drug <- ss_th %>% 
+  st_drop_geometry() %>% 
+  filter(reason != "") %>% 
+  group_by(lsoa, ward, lsoa_shape, reason) %>% 
+  mutate(count = 1) %>% 
+  summarise(count = sum(count)) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = reason,
+              values_from = count,
+              values_fill = 0) %>% 
+  mutate(tot = `Stolen goods` + `Controlled drugs` + `Offensive weapons` +
+           `Evidence of offences under the Act` + `Articles for use in criminal damage` + 
+           `Anything to threaten or harm anyone` + `Firearms` + `Fireworks`,
+         `Stolen goods` = `Stolen goods`/tot,
+         `Controlled drugs` = `Controlled drugs`/tot,
+         `Offensive weapons` = `Offensive weapons`/tot,
+         `Evidence of offences under the Act` = `Evidence of offences under the Act`/tot,
+         `Articles for use in criminal damage` = `Articles for use in criminal damage`/tot,
+         `Anything to threaten or harm anyone` = `Anything to threaten or harm anyone`/tot,
+         `Firearms` = `Firearms`/tot,
+         `Fireworks` = `Fireworks`/tot) %>% 
+  select(-tot) %>% 
+  pivot_longer(c(`Stolen goods`, `Controlled drugs`, `Offensive weapons`,
+                 `Evidence of offences under the Act`, `Articles for use in criminal damage`, 
+                 `Anything to threaten or harm anyone`, `Firearms`, `Fireworks`),
+               names_to = "reason",
+               values_to = "pc") %>% 
+  filter(reason %in% c("Controlled drugs")) %>% 
+  st_as_sf() %>% 
+  st_transform(crs = 4326) %>% 
+  ggplot(aes(fill = pc)) +
+  geom_sf(colour = "white") +
+  scale_fill_viridis(option = "magma") +
+  facet_wrap(~reason) +
+  geom_sf(data = missing_lsoa_shape, fill = "grey", color = "white")
+
+ss_th_reason_pc_drug
+
+
+ss_th_reason_pc_stolen <- ss_th %>% 
+  st_drop_geometry() %>% 
+  filter(reason != "") %>% 
+  group_by(lsoa, ward, lsoa_shape, reason) %>% 
+  mutate(count = 1) %>% 
+  summarise(count = sum(count)) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = reason,
+              values_from = count,
+              values_fill = 0) %>% 
+  mutate(tot = `Stolen goods` + `Controlled drugs` + `Offensive weapons` +
+           `Evidence of offences under the Act` + `Articles for use in criminal damage` + 
+           `Anything to threaten or harm anyone` + `Firearms` + `Fireworks`,
+         `Stolen goods` = `Stolen goods`/tot,
+         `Controlled drugs` = `Controlled drugs`/tot,
+         `Offensive weapons` = `Offensive weapons`/tot,
+         `Evidence of offences under the Act` = `Evidence of offences under the Act`/tot,
+         `Articles for use in criminal damage` = `Articles for use in criminal damage`/tot,
+         `Anything to threaten or harm anyone` = `Anything to threaten or harm anyone`/tot,
+         `Firearms` = `Firearms`/tot,
+         `Fireworks` = `Fireworks`/tot) %>% 
+  select(-tot) %>% 
+  pivot_longer(c(`Stolen goods`, `Controlled drugs`, `Offensive weapons`,
+                 `Evidence of offences under the Act`, `Articles for use in criminal damage`, 
+                 `Anything to threaten or harm anyone`, `Firearms`, `Fireworks`),
+               names_to = "reason",
+               values_to = "pc") %>% 
+  filter(reason %in% c("Stolen goods")) %>% 
+  st_as_sf() %>% 
+  st_transform(crs = 4326) %>% 
+  ggplot(aes(fill = pc)) +
+  geom_sf(colour = "white") +
+  scale_fill_viridis(option = "magma") +
+  facet_wrap(~reason) +
+  geom_sf(data = missing_lsoa_shape, fill = "grey", color = "white")
+
+ss_th_reason_pc_stolen
+
+
+ss_th_reason_pc_three <- ss_th %>% 
+  st_drop_geometry() %>% 
+  filter(reason != "") %>% 
+  group_by(lsoa, ward, lsoa_shape, reason) %>% 
+  mutate(count = 1) %>% 
+  summarise(count = sum(count)) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = reason,
+              values_from = count,
+              values_fill = 0) %>% 
+  mutate(tot = `Stolen goods` + `Controlled drugs` + `Offensive weapons` +
+           `Evidence of offences under the Act` + `Articles for use in criminal damage` + 
+           `Anything to threaten or harm anyone` + `Firearms` + `Fireworks`,
+         `Stolen goods` = `Stolen goods`/tot,
+         `Controlled drugs` = `Controlled drugs`/tot,
+         `Offensive weapons grouping` = (`Offensive weapons` + `Anything to threaten or harm anyone` + `Firearms`)/tot,
+         `Evidence of offences under the Act` = `Evidence of offences under the Act`/tot,
+         `Articles for use in criminal damage` = `Articles for use in criminal damage`/tot,
+         `Anything to threaten or harm anyone` = `Anything to threaten or harm anyone`/tot,
+         `Firearms` = `Firearms`/tot,
+         `Fireworks` = `Fireworks`/tot) %>% 
+  select(-tot) %>% 
+  pivot_longer(c(`Stolen goods`, `Controlled drugs`, `Offensive weapons`,
+                 `Evidence of offences under the Act`, `Articles for use in criminal damage`, 
+                 `Anything to threaten or harm anyone`, `Firearms`, `Fireworks`, `Offensive weapons grouping`),
+               names_to = "reason",
+               values_to = "pc") %>% 
+  filter(reason %in% c("Stolen goods", "Controlled drugs", "Offensive weapons grouping")) %>% 
+  st_as_sf() %>% 
+  st_transform(crs = 4326) %>% 
+  ggplot(aes(fill = pc)) +
+  geom_sf(colour = "white") +
+  scale_fill_viridis(option = "magma") +
+  facet_wrap(~reason) +
+  geom_sf(data = missing_lsoa_shape, fill = "grey", color = "white")
+
+ss_th_reason_pc_three
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+# # # # # # #INVESTIGATING OUTCOMES # # # # # # # # # # # # # # # 
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+
+check <- ss_th %>% 
+  st_drop_geometry() %>% 
+  distinct(outcome)
+# no missing i think!
+
+# Arrest
+# A no further action disposal
+# Community resolution
+# Summons / charged by post
+# Penalty Notice for Disorder
+# Caution (simple or conditional)
+
+
+ss_th_outcome_pc <- ss_th %>% 
+  st_drop_geometry() %>% 
+  group_by(lsoa, ward, lsoa_shape, outcome) %>% 
+  mutate(count = 1) %>% 
+  summarise(count = sum(count)) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = outcome,
+              values_from = count,
+              values_fill = 0) %>% 
+  mutate(tot = `Arrest` +
+               `A no further action disposal` +
+               `Community resolution` +
+               `Summons / charged by post` +
+               `Penalty Notice for Disorder` +
+               `Caution (simple or conditional)`,
+         `Arrest` = `Arrest`/tot,
+         `A no further action disposal` =  `A no further action disposal`/tot,
+         `Community resolution` = `Community resolution`/tot,
+         `Summons / charged by post` = `Summons / charged by post`/tot,
+         `Penalty Notice for Disorder` = `Penalty Notice for Disorder`/tot,
+         `Caution (simple or conditional)` = `Caution (simple or conditional)`/tot) %>% 
+  select(-tot) %>% 
+  pivot_longer(c(`Arrest`,
+                 `A no further action disposal`,
+                 `Community resolution`,
+                 `Summons / charged by post`,
+                 `Penalty Notice for Disorder`,
+                 `Caution (simple or conditional)`),
+               names_to = "outcome",
+               values_to = "pc") %>% 
+  # filter(outcome %in% c("Stolen goods")) %>% 
+  st_as_sf() %>% 
+  st_transform(crs = 4326) %>% 
+  ggplot(aes(fill = pc)) +
+  geom_sf(colour = "white") +
+  scale_fill_viridis(option = "magma") +
+  facet_wrap(~outcome) +
+  geom_sf(data = missing_lsoa_shape, fill = "grey", color = "white")
+
+ss_th_outcome_pc
+# no further action by far most common
+
+ss_th_outcome_pc_three <- ss_th %>% 
+  st_drop_geometry() %>% 
+  group_by(lsoa, ward, lsoa_shape, outcome) %>% 
+  mutate(count = 1) %>% 
+  summarise(count = sum(count)) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = outcome,
+              values_from = count,
+              values_fill = 0) %>% 
+  mutate(tot = `Arrest` +
+           `A no further action disposal` +
+           `Community resolution` +
+           `Summons / charged by post` +
+           `Penalty Notice for Disorder` +
+           `Caution (simple or conditional)`,
+         `Arrest` = `Arrest`/tot,
+         `A no further action disposal` =  `A no further action disposal`/tot,
+         `Community resolution` = `Community resolution`/tot,
+         `Summons / charged by post` = `Summons / charged by post`/tot,
+         `Penalty Notice for Disorder` = `Penalty Notice for Disorder`/tot,
+         `Caution (simple or conditional)` = `Caution (simple or conditional)`/tot) %>% 
+  select(-tot) %>% 
+  pivot_longer(c(`Arrest`,
+                 `A no further action disposal`,
+                 `Community resolution`,
+                 `Summons / charged by post`,
+                 `Penalty Notice for Disorder`,
+                 `Caution (simple or conditional)`),
+               names_to = "outcome",
+               values_to = "pc") %>% 
+  filter(outcome %in% c("Arrest", "Community resolution", "Penalty Notice for Disorder")) %>% 
+  st_as_sf() %>% 
+  st_transform(crs = 4326) %>% 
+  ggplot(aes(fill = pc)) +
+  geom_sf(colour = "white") +
+  scale_fill_viridis(option = "magma") +
+  facet_wrap(~outcome) +
+  geom_sf(data = missing_lsoa_shape, fill = "grey", color = "white")
+
+ss_th_outcome_pc_three
+
+
+ss_th_outcome_pc_no_byage <- ss_th %>% 
+  st_drop_geometry() %>% 
+  filter(age != "") %>% 
+  group_by(lsoa, ward, lsoa_shape, outcome, age) %>% 
+  mutate(count = 1) %>% 
+  summarise(count = sum(count)) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = outcome,
+              values_from = count,
+              values_fill = 0) %>% 
+  mutate(tot = `Arrest` +
+           `A no further action disposal` +
+           `Community resolution` +
+           `Summons / charged by post` +
+           `Penalty Notice for Disorder` +
+           `Caution (simple or conditional)`,
+         `Arrest` = `Arrest`/tot,
+         `A no further action disposal` =  `A no further action disposal`/tot,
+         `Community resolution` = `Community resolution`/tot,
+         `Summons / charged by post` = `Summons / charged by post`/tot,
+         `Penalty Notice for Disorder` = `Penalty Notice for Disorder`/tot,
+         `Caution (simple or conditional)` = `Caution (simple or conditional)`/tot) %>% 
+  select(-tot) %>% 
+  pivot_longer(c(`Arrest`,
+                 `A no further action disposal`,
+                 `Community resolution`,
+                 `Summons / charged by post`,
+                 `Penalty Notice for Disorder`,
+                 `Caution (simple or conditional)`),
+               names_to = "outcome",
+               values_to = "pc") %>% 
+  filter(outcome %in% c("A no further action disposal")) %>% 
+  st_as_sf() %>% 
+  st_transform(crs = 4326) %>% 
+  ggplot(aes(fill = pc)) +
+  geom_sf(data = th_map_lsoa, fill = "grey", color = "white") +
+  geom_sf(colour = "white") +
+  scale_fill_viridis(option = "magma") +
+  facet_wrap(~age)
+
+ss_th_outcome_pc_no_byage
+
+
+
+ss_th_outcome_pc_no_byreason <- ss_th %>% 
+  st_drop_geometry() %>% 
+  filter(age != "",
+         reason %in% c("Controlled drugs", "Stolen goods", "Offensive weapons", "Anything to threaten or harm anyone", "Firearms")) %>% 
+  mutate(reason = ifelse(reason %in% c("Offensive weapons", "Anything to threaten or harm anyone", "Firearms"), 
+                         "Weapons grouping", reason)) %>% 
+  group_by(lsoa, ward, lsoa_shape, outcome, reason) %>% 
+  mutate(count = 1) %>% 
+  summarise(count = sum(count)) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = outcome,
+              values_from = count,
+              values_fill = 0) %>% 
+  mutate(tot = `Arrest` +
+           `A no further action disposal` +
+           `Community resolution` +
+           `Summons / charged by post` +
+           `Penalty Notice for Disorder` +
+           `Caution (simple or conditional)`,
+         `Arrest` = `Arrest`/tot,
+         `A no further action disposal` =  `A no further action disposal`/tot,
+         `Community resolution` = `Community resolution`/tot,
+         `Summons / charged by post` = `Summons / charged by post`/tot,
+         `Penalty Notice for Disorder` = `Penalty Notice for Disorder`/tot,
+         `Caution (simple or conditional)` = `Caution (simple or conditional)`/tot) %>% 
+  select(-tot) %>% 
+  pivot_longer(c(`Arrest`,
+                 `A no further action disposal`,
+                 `Community resolution`,
+                 `Summons / charged by post`,
+                 `Penalty Notice for Disorder`,
+                 `Caution (simple or conditional)`),
+               names_to = "outcome",
+               values_to = "pc") %>% 
+  filter(outcome %in% c("A no further action disposal")) %>% 
+  st_as_sf() %>% 
+  st_transform(crs = 4326) %>% 
+  ggplot(aes(fill = pc)) +
+  geom_sf(data = th_map_lsoa, fill = "grey", color = "white") +
+  geom_sf(colour = "white") +
+  scale_fill_viridis(option = "magma") +
+  facet_wrap(~reason)
+
+ss_th_outcome_pc_no_byreason
+
+ss_th_outcome_pc_arrest_byreason <- ss_th %>% 
+  st_drop_geometry() %>% 
+  filter(age != "",
+         reason %in% c("Controlled drugs", "Stolen goods", "Offensive weapons", "Anything to threaten or harm anyone", "Firearms")) %>% 
+  mutate(reason = ifelse(reason %in% c("Offensive weapons", "Anything to threaten or harm anyone", "Firearms"), 
+                         "Weapons grouping", reason)) %>% 
+  group_by(lsoa, ward, lsoa_shape, outcome, reason) %>% 
+  mutate(count = 1) %>% 
+  summarise(count = sum(count)) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = outcome,
+              values_from = count,
+              values_fill = 0) %>% 
+  mutate(tot = `Arrest` +
+           `A no further action disposal` +
+           `Community resolution` +
+           `Summons / charged by post` +
+           `Penalty Notice for Disorder` +
+           `Caution (simple or conditional)`,
+         `Arrest` = `Arrest`/tot,
+         `A no further action disposal` =  `A no further action disposal`/tot,
+         `Community resolution` = `Community resolution`/tot,
+         `Summons / charged by post` = `Summons / charged by post`/tot,
+         `Penalty Notice for Disorder` = `Penalty Notice for Disorder`/tot,
+         `Caution (simple or conditional)` = `Caution (simple or conditional)`/tot) %>% 
+  select(-tot) %>% 
+  pivot_longer(c(`Arrest`,
+                 `A no further action disposal`,
+                 `Community resolution`,
+                 `Summons / charged by post`,
+                 `Penalty Notice for Disorder`,
+                 `Caution (simple or conditional)`),
+               names_to = "outcome",
+               values_to = "pc") %>% 
+  filter(outcome %in% c("Arrest")) %>% 
+  st_as_sf() %>% 
+  st_transform(crs = 4326) %>% 
+  ggplot(aes(fill = pc)) +
+  geom_sf(data = th_map_lsoa, fill = "grey", color = "white") +
+  geom_sf(colour = "white") +
+  scale_fill_viridis(option = "magma") +
+  facet_wrap(~reason)
+
+ss_th_outcome_pc_arrest_byreason
+
+
+ss_th_outcome_pc_arrest_byage <- ss_th %>% 
+  st_drop_geometry() %>% 
+  filter(age != "") %>% 
+  group_by(lsoa, ward, lsoa_shape, outcome, age) %>% 
+  mutate(count = 1) %>% 
+  summarise(count = sum(count)) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = outcome,
+              values_from = count,
+              values_fill = 0) %>% 
+  mutate(tot = `Arrest` +
+           `A no further action disposal` +
+           `Community resolution` +
+           `Summons / charged by post` +
+           `Penalty Notice for Disorder` +
+           `Caution (simple or conditional)`,
+         `Arrest` = `Arrest`/tot,
+         `A no further action disposal` =  `A no further action disposal`/tot,
+         `Community resolution` = `Community resolution`/tot,
+         `Summons / charged by post` = `Summons / charged by post`/tot,
+         `Penalty Notice for Disorder` = `Penalty Notice for Disorder`/tot,
+         `Caution (simple or conditional)` = `Caution (simple or conditional)`/tot) %>% 
+  select(-tot) %>% 
+  pivot_longer(c(`Arrest`,
+                 `A no further action disposal`,
+                 `Community resolution`,
+                 `Summons / charged by post`,
+                 `Penalty Notice for Disorder`,
+                 `Caution (simple or conditional)`),
+               names_to = "outcome",
+               values_to = "pc") %>% 
+  filter(outcome %in% c("Arrest")) %>% 
+  st_as_sf() %>% 
+  st_transform(crs = 4326) %>% 
+  ggplot(aes(fill = pc)) +
+  geom_sf(data = th_map_lsoa, fill = "grey", color = "white") +
+  geom_sf(colour = "white") +
+  scale_fill_viridis(option = "magma") +
+  facet_wrap(~age)
+
+ss_th_outcome_pc_arrest_byage
