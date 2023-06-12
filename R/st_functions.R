@@ -40,17 +40,37 @@ add_missing_lsoa <- function(ss_data, full_lsoa_list, full_lsoa_shapes) {
 
 
 
+extract_ss <- function(common_path, file_pattern = "-metropolitan-stop-and-search.csv$") {
+  
+  files_to_read <- list.files(
+    path = common_path,        # directory to search within
+    pattern = file_pattern,
+    recursive = TRUE,          # search subdirectories
+    full.names = TRUE          # return the full path
+  )
 
+  # In this case, if the root cause is reading a 0-row csv file,
+  # I think the solution is to fix the problem upstream by (e.g.) using
+  # col_types in readr::read_csv() to ensure that even
+  # empty data frames get the correct column types.
+  
+  ss_geom <- lapply(files_to_read, read_csv, col_types = cols(`Outcome linked to object of search` = col_character())) %>%
+    bind_rows()
+  
+  return(ss_geom)
+  
+}
 
-missing_lsoa_shape <- th_lsoa_list %>% 
-  filter(!(lsoa %in% ss_lsoa_list$lsoa)) %>% 
-  left_join(lsoa_shape %>% 
-              select(LSOA11NM) %>% 
-              rename(lsoa = LSOA11NM)) %>% 
-  rename(lsoa_shape = geometry) %>% 
-  mutate(count = 0) %>% 
-  st_as_sf() %>% 
-  st_transform(crs = 4326)
+# 
+# missing_lsoa_shape <- th_lsoa_list %>% 
+#   filter(!(lsoa %in% ss_lsoa_list$lsoa)) %>% 
+#   left_join(lsoa_shape %>% 
+#               select(LSOA11NM) %>% 
+#               rename(lsoa = LSOA11NM)) %>% 
+#   rename(lsoa_shape = geometry) %>% 
+#   mutate(count = 0) %>% 
+#   st_as_sf() %>% 
+#   st_transform(crs = 4326)
 
 
 
@@ -93,15 +113,15 @@ lonlat_to_lsoashape <- function(ss_sf,
   shape[ii]
 }
 
-lonlat_to_ward <- function(ss_sf,
-                           ward_shape = w_shape,
-                           name_col = "WD11NM") {
-  ward_trans <- st_transform(ward_shape, crs = 3857)
-  ss_trans <- st_transform(ss_sf, crs = 3857)
-  ward_names <- ward_trans[[name_col]]
-  ii <- as.integer(st_intersects(ss_trans, ward_trans))
-  ward_names[ii]
-}
+# lonlat_to_ward <- function(ss_sf,
+#                            ward_shape = w_shape,
+#                            name_col = "WD11NM") {
+#   ward_trans <- st_transform(ward_shape, crs = 3857)
+#   ss_trans <- st_transform(ss_sf, crs = 3857)
+#   ward_names <- ward_trans[[name_col]]
+#   ii <- as.integer(st_intersects(ss_trans, ward_trans))
+#   ward_names[ii]
+# }
 
 # lonlat_to_wshape <- function(ss_sf,
 #                            ward_shape = w_shape,

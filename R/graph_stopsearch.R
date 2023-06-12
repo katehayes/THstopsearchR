@@ -23,7 +23,21 @@ th_map_ward <- ss_th %>%
               rename(ward = WD22NM)) %>% 
   st_as_sf() %>% 
   st_transform(crs = 4326)
+
+
+check <- w_shape %>% 
+  filter(LAD22NM == "Tower Hamlets") %>% 
+  st_transform(crs = 4326) %>% 
+  ggplot() + 
+  geom_sf(fill = NA, color = "black", linewidth = 0.5) +
+  geom_sf_text(aes(label = str_wrap(WD22NM, 2)), colour = "black", size = 2.5) +
+  theme_bw()
+  check
   
+
+  
+
+
 
 th_map_ward <- ss_london %>% 
   st_drop_geometry() %>% 
@@ -51,6 +65,10 @@ th_map <- ggplot() +
   # geom_text(data =ward_coords, aes(x = X, y = Y, label = ward)) +
   geom_sf_text(data = th_map_ward, aes(label = str_wrap(ward, 2)), colour = "black", size = 2.5) +
   theme_bw()
+
+
+
+
 
 th_map 
 
@@ -471,7 +489,7 @@ ss_th_age_pc
 
 ss_th_age_missing <- ss_th %>% 
   st_drop_geometry() %>% 
-  mutate(age_missing = ifelse(age == "", "Missing", "Recorded")) %>% 
+  mutate(age_missing = ifelse(is.na(age), "Missing", "Recorded")) %>% 
   group_by(lsoa, ward, lsoa_shape, age_missing) %>% 
   mutate(count = 1) %>% 
   summarise(count = sum(count)) %>% 
@@ -520,7 +538,7 @@ check <- ss_th %>%
 
 ss_th_reason_missing <- ss_th %>% 
   st_drop_geometry() %>% 
-  mutate(reason_missing = ifelse(reason == "", "Missing", "Recorded")) %>% 
+  mutate(reason_missing = ifelse(is.na(reason), "Missing", "Recorded")) %>% 
   group_by(lsoa, ward, lsoa_shape, reason_missing) %>% 
   mutate(count = 1) %>% 
   summarise(count = sum(count)) %>% 
@@ -548,7 +566,7 @@ ss_th_reason_missing
 
 ss_th_reason_pc_weapon <- ss_th %>% 
   st_drop_geometry() %>% 
-  filter(reason != "") %>% 
+  filter(!is.na(reason)) %>% 
   group_by(lsoa, ward, lsoa_shape, reason) %>% 
   mutate(count = 1) %>% 
   summarise(count = sum(count)) %>% 
@@ -588,7 +606,7 @@ ss_th_reason_pc_weapon
 
 ss_th_reason_pc_drug <- ss_th %>% 
   st_drop_geometry() %>% 
-  filter(reason != "") %>% 
+  filter(!is.na(reason)) %>% 
   group_by(lsoa, ward, lsoa_shape, reason) %>% 
   mutate(count = 1) %>% 
   summarise(count = sum(count)) %>% 
@@ -627,7 +645,7 @@ ss_th_reason_pc_drug
 
 ss_th_reason_pc_stolen <- ss_th %>% 
   st_drop_geometry() %>% 
-  filter(reason != "") %>% 
+  filter(!is.na(reason)) %>% 
   group_by(lsoa, ward, lsoa_shape, reason) %>% 
   mutate(count = 1) %>% 
   summarise(count = sum(count)) %>% 
@@ -666,7 +684,7 @@ ss_th_reason_pc_stolen
 
 ss_th_reason_pc_three <- ss_th %>% 
   st_drop_geometry() %>% 
-  filter(reason != "") %>% 
+  filter(!is.na(reason)) %>% 
   group_by(lsoa, ward, lsoa_shape, reason) %>% 
   mutate(count = 1) %>% 
   summarise(count = sum(count)) %>% 
@@ -791,7 +809,7 @@ ss_th_outcome_pc_three <- ss_th %>%
                  `Caution (simple or conditional)`),
                names_to = "outcome",
                values_to = "pc") %>% 
-  filter(outcome %in% c("Arrest", "Community resolution", "Penalty Notice for Disorder")) %>% 
+  filter(outcome %in% c("Arrest", "Community resolution", "Penalty Notice for Disorder", "Caution (simple or conditional)")) %>% 
   st_as_sf() %>% 
   st_transform(crs = 4326) %>% 
   ggplot(aes(fill = pc)) +
@@ -805,7 +823,7 @@ ss_th_outcome_pc_three
 
 ss_th_outcome_pc_no_byage <- ss_th %>% 
   st_drop_geometry() %>% 
-  filter(age != "") %>% 
+  filter(!is.na(age)) %>% 
   group_by(lsoa, ward, lsoa_shape, outcome, age) %>% 
   mutate(count = 1) %>% 
   summarise(count = sum(count)) %>% 
@@ -849,7 +867,7 @@ ss_th_outcome_pc_no_byage
 
 ss_th_outcome_pc_no_byreason <- ss_th %>% 
   st_drop_geometry() %>% 
-  filter(age != "",
+  filter(!is.na(age),
          reason %in% c("Controlled drugs", "Stolen goods", "Offensive weapons", "Anything to threaten or harm anyone", "Firearms")) %>% 
   mutate(reason = ifelse(reason %in% c("Offensive weapons", "Anything to threaten or harm anyone", "Firearms"), 
                          "Weapons grouping", reason)) %>% 
@@ -892,10 +910,12 @@ ss_th_outcome_pc_no_byreason <- ss_th %>%
 
 ss_th_outcome_pc_no_byreason
 
+
+
 ss_th_outcome_pc_arrest_byreason <- ss_th %>% 
   st_drop_geometry() %>% 
-  filter(age != "",
-         reason %in% c("Controlled drugs", "Stolen goods", "Offensive weapons", "Anything to threaten or harm anyone", "Firearms")) %>% 
+  filter(!is.na(age),
+         reason %in% c("Controlled drugs", "Offensive weapons", "Anything to threaten or harm anyone", "Firearms")) %>% # "Stolen goods",
   mutate(reason = ifelse(reason %in% c("Offensive weapons", "Anything to threaten or harm anyone", "Firearms"), 
                          "Weapons grouping", reason)) %>% 
   group_by(lsoa, ward, lsoa_shape, outcome, reason) %>% 
@@ -940,7 +960,7 @@ ss_th_outcome_pc_arrest_byreason
 
 ss_th_outcome_pc_arrest_byage <- ss_th %>% 
   st_drop_geometry() %>% 
-  filter(age != "") %>% 
+  filter(!is.na(age)) %>% 
   group_by(lsoa, ward, lsoa_shape, outcome, age) %>% 
   mutate(count = 1) %>% 
   summarise(count = sum(count)) %>% 
